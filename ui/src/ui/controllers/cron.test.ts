@@ -321,8 +321,10 @@ describe("cron controller", () => {
     expect(addCall).toBeDefined();
     expect(addCall?.[1]).toMatchObject({
       name: "main job",
-      delivery: undefined,
+      delivery: { mode: "none" },
     });
+    // After submit, form is reset to defaults (deliveryMode = "announce" from DEFAULT_CRON_FORM).
+    expect(state.cronForm.deliveryMode).toBe("announce");
   });
 
   it("submits cron.update when editing an existing job", async () => {
