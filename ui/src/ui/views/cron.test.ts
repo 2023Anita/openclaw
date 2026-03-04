@@ -203,8 +203,8 @@ describe("cron view", () => {
           runsJobId: "job-1",
           runsScope: "job",
           runs: [
-            { ts: 1, jobId: "job-1", status: "ok", summary: "older run" },
             { ts: 2, jobId: "job-1", status: "ok", summary: "newer run" },
+            { ts: 1, jobId: "job-1", status: "ok", summary: "older run" },
           ],
         }),
       ),
@@ -222,8 +222,8 @@ describe("cron view", () => {
     const summaries = Array.from(
       runHistoryCard?.querySelectorAll(".list-item .list-sub") ?? [],
     ).map((el) => (el.textContent ?? "").trim());
-    expect(summaries[0]).toBe("older run");
-    expect(summaries[1]).toBe("newer run");
+    expect(summaries[0]).toBe("newer run");
+    expect(summaries[1]).toBe("older run");
   });
 
   it("labels past nextRunAtMs as due instead of next", () => {

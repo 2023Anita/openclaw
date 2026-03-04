@@ -44,7 +44,10 @@ describe("i18n", () => {
   it("loads saved non-English locale on startup", async () => {
     localStorage.setItem("openclaw.i18n.locale", "zh-CN");
     localStorage.setItem("openclaw.i18n.locale", "zh-CN");
-    await i18n.setLocale("zh-CN"); // Actually load to simulate startup restoration correctly for the test
+    // Explicitly call the initialization path that runs in the constructor
+    (i18n as any).loadLocale();
+    // Yield to let the promise resolve
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(i18n.getLocale()).toBe("zh-CN");
     expect(t("common.health")).toBe("健康状况");
