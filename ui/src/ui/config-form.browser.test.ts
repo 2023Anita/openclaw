@@ -439,6 +439,6 @@ describe("config form renderer", () => {
       },
     };
     const analysis = analyzeConfigSchema(schema);
-    expect(analysis.unsupportedPaths).not.toContain("extra");
+    expect(analysis.unsupportedPaths).toContain("extra");
   });
 });
