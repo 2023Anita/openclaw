@@ -17,16 +17,23 @@ type SessionDefaultsSnapshot = {
   mainKey?: string;
 };
 
+/** Returns true for session keys that identify a heartbeat system session. */
+function isHeartbeatSession(key: string): boolean {
+  const norm = key.toLowerCase();
+  return norm === "heartbeat" || norm.endsWith(":heartbeat");
+}
+
 function resolveSidebarChatSessionKey(state: AppViewState): string {
   const snapshot = state.hello?.snapshot as
     | { sessionDefaults?: SessionDefaultsSnapshot }
     | undefined;
   const mainSessionKey = snapshot?.sessionDefaults?.mainSessionKey?.trim();
-  if (mainSessionKey) {
+  // Exclude heartbeat system sessions to keep parity with resolveMainSessionKey
+  if (mainSessionKey && !isHeartbeatSession(mainSessionKey)) {
     return mainSessionKey;
   }
   const mainKey = snapshot?.sessionDefaults?.mainKey?.trim();
-  if (mainKey) {
+  if (mainKey && !isHeartbeatSession(mainKey)) {
     return mainKey;
   }
   return "main";
@@ -54,26 +61,26 @@ export function renderTab(state: AppViewState, tab: Tab) {
       href=${href}
       class="nav-item ${state.tab === tab ? "active" : ""}"
       @click=${(event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      if (tab === "chat") {
-        const mainSessionKey = resolveSidebarChatSessionKey(state);
-        if (state.sessionKey !== mainSessionKey) {
-          resetChatStateForSessionSwitch(state, mainSessionKey);
-          void state.loadAssistantIdentity();
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        ) {
+          return;
         }
-      }
-      state.setTab(tab);
-    }}
+        event.preventDefault();
+        if (tab === "chat") {
+          const mainSessionKey = resolveSidebarChatSessionKey(state);
+          if (state.sessionKey !== mainSessionKey) {
+            resetChatStateForSessionSwitch(state, mainSessionKey);
+            void state.loadAssistantIdentity();
+          }
+        }
+        state.setTab(tab);
+      }}
       title=${titleForTab(tab)}
     >
       <span class="nav-item__icon" aria-hidden="true">${icons[iconForTab(tab)]}</span>
@@ -99,8 +106,9 @@ function renderCronFilterIcon(hiddenCount: number) {
         <circle cx="12" cy="12" r="10"></circle>
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
-      ${hiddenCount > 0
-      ? html`<span
+      ${
+        hiddenCount > 0
+          ? html`<span
             style="
               position: absolute;
               top: -5px;
@@ -115,8 +123,8 @@ function renderCronFilterIcon(hiddenCount: number) {
             "
           >${hiddenCount}</span
           >`
-      : ""
-    }
+          : ""
+      }
     </span>
   `;
 }
@@ -178,59 +186,59 @@ export function renderChatControls(state: AppViewState) {
           .value=${state.sessionKey}
           ?disabled=${!state.connected}
           @change=${(e: Event) => {
-      const next = (e.target as HTMLSelectElement).value;
-      state.sessionKey = next;
-      state.chatMessage = "";
-      state.chatStream = null;
-      (state as unknown as OpenClawApp).chatStreamStartedAt = null;
-      state.chatRunId = null;
-      (state as unknown as OpenClawApp).resetToolStream();
-      (state as unknown as OpenClawApp).resetChatScroll();
-      state.applySettings({
-        ...state.settings,
-        sessionKey: next,
-        lastActiveSessionKey: next,
-      });
-      void state.loadAssistantIdentity();
-      syncUrlWithSessionKey(
-        state as unknown as Parameters<typeof syncUrlWithSessionKey>[0],
-        next,
-        true,
-      );
-      void loadChatHistory(state as unknown as ChatState);
-    }}
+            const next = (e.target as HTMLSelectElement).value;
+            state.sessionKey = next;
+            state.chatMessage = "";
+            state.chatStream = null;
+            (state as unknown as OpenClawApp).chatStreamStartedAt = null;
+            state.chatRunId = null;
+            (state as unknown as OpenClawApp).resetToolStream();
+            (state as unknown as OpenClawApp).resetChatScroll();
+            state.applySettings({
+              ...state.settings,
+              sessionKey: next,
+              lastActiveSessionKey: next,
+            });
+            void state.loadAssistantIdentity();
+            syncUrlWithSessionKey(
+              state as unknown as Parameters<typeof syncUrlWithSessionKey>[0],
+              next,
+              true,
+            );
+            void loadChatHistory(state as unknown as ChatState);
+          }}
         >
           ${repeat(
-      sessionOptions,
-      (entry) => entry.key,
-      (entry) =>
-        html`<option value=${entry.key} title=${entry.key}>
+            sessionOptions,
+            (entry) => entry.key,
+            (entry) =>
+              html`<option value=${entry.key} title=${entry.key}>
                 ${entry.displayName ?? entry.key}
               </option>`,
-    )}
+          )}
         </select>
       </label>
       <button
         class="btn btn--sm btn--icon"
         ?disabled=${state.chatLoading || !state.connected}
         @click=${async () => {
-      const app = state as unknown as OpenClawApp;
-      app.chatManualRefreshInFlight = true;
-      app.chatNewMessagesBelow = false;
-      await app.updateComplete;
-      app.resetToolStream();
-      try {
-        await refreshChat(state as unknown as Parameters<typeof refreshChat>[0], {
-          scheduleScroll: false,
-        });
-        app.scrollToBottom({ smooth: true });
-      } finally {
-        requestAnimationFrame(() => {
-          app.chatManualRefreshInFlight = false;
+          const app = state as unknown as OpenClawApp;
+          app.chatManualRefreshInFlight = true;
           app.chatNewMessagesBelow = false;
-        });
-      }
-    }}
+          await app.updateComplete;
+          app.resetToolStream();
+          try {
+            await refreshChat(state as unknown as Parameters<typeof refreshChat>[0], {
+              scheduleScroll: false,
+            });
+            app.scrollToBottom({ smooth: true });
+          } finally {
+            requestAnimationFrame(() => {
+              app.chatManualRefreshInFlight = false;
+              app.chatNewMessagesBelow = false;
+            });
+          }
+        }}
         title=${t("chat.refreshTitle")}
       >
         ${refreshIcon}
@@ -240,14 +248,14 @@ export function renderChatControls(state: AppViewState) {
         class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
         ?disabled=${disableThinkingToggle}
         @click=${() => {
-      if (disableThinkingToggle) {
-        return;
-      }
-      state.applySettings({
-        ...state.settings,
-        chatShowThinking: !state.settings.chatShowThinking,
-      });
-    }}
+          if (disableThinkingToggle) {
+            return;
+          }
+          state.applySettings({
+            ...state.settings,
+            chatShowThinking: !state.settings.chatShowThinking,
+          });
+        }}
         aria-pressed=${showThinking}
         title=${disableThinkingToggle ? t("chat.onboardingDisabled") : t("chat.thinkingToggle")}
       >
@@ -257,14 +265,14 @@ export function renderChatControls(state: AppViewState) {
         class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
         ?disabled=${disableFocusToggle}
         @click=${() => {
-      if (disableFocusToggle) {
-        return;
-      }
-      state.applySettings({
-        ...state.settings,
-        chatFocusMode: !state.settings.chatFocusMode,
-      });
-    }}
+          if (disableFocusToggle) {
+            return;
+          }
+          state.applySettings({
+            ...state.settings,
+            chatFocusMode: !state.settings.chatFocusMode,
+          });
+        }}
         aria-pressed=${focusActive}
         title=${disableFocusToggle ? t("chat.onboardingDisabled") : t("chat.focusToggle")}
       >
@@ -273,15 +281,16 @@ export function renderChatControls(state: AppViewState) {
       <button
         class="btn btn--sm btn--icon ${hideCron ? "active" : ""}"
         @click=${() => {
-      state.sessionsHideCron = !hideCron;
-    }}
+          state.sessionsHideCron = !hideCron;
+        }}
         aria-pressed=${hideCron}
-        title=${hideCron
-      ? hiddenCronCount > 0
-        ? t("chat.showCronSessionsHidden", { count: String(hiddenCronCount) })
-        : t("chat.showCronSessions")
-      : t("chat.hideCronSessions")
-    }
+        title=${
+          hideCron
+            ? hiddenCronCount > 0
+              ? t("chat.showCronSessionsHidden", { count: String(hiddenCronCount) })
+              : t("chat.showCronSessions")
+            : t("chat.hideCronSessions")
+        }
       >
         ${renderCronFilterIcon(hiddenCronCount)}
       </button>
@@ -295,17 +304,12 @@ function resolveMainSessionKey(
 ): string | null {
   const snapshot = hello?.snapshot as { sessionDefaults?: SessionDefaultsSnapshot } | undefined;
   const mainSessionKey = snapshot?.sessionDefaults?.mainSessionKey?.trim();
-  const isHeartbeat = (key: string) => {
-    const norm = key.toLowerCase();
-    return norm === "heartbeat" || norm.endsWith(":heartbeat");
-  };
-
   // Ignore Heartbeat as main session - it's a system session, not a user session
-  if (mainSessionKey && !isHeartbeat(mainSessionKey)) {
+  if (mainSessionKey && !isHeartbeatSession(mainSessionKey)) {
     return mainSessionKey;
   }
   const mainKey = snapshot?.sessionDefaults?.mainKey?.trim();
-  if (mainKey && !isHeartbeat(mainKey)) {
+  if (mainKey && !isHeartbeatSession(mainKey)) {
     return mainKey;
   }
   if (sessions?.sessions?.some((row) => row.key === "main")) {
